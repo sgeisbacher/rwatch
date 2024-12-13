@@ -1,0 +1,200 @@
+package main
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/pion/randutil"
+	"github.com/pion/webrtc/v4"
+)
+
+func main() {
+	ICEServers, err := getICEServersFromServer()
+	if err != nil {
+		fmt.Printf("E: while getting ICEServers-config: %v\n", err)
+		panic("check your internet connection")
+	}
+	config := webrtc.Configuration{
+		ICEServers: ICEServers,
+	}
+
+	reset := make(chan bool, 1)
+
+	for {
+		// Create a new RTCPeerConnection
+		peerConnection, err := webrtc.NewPeerConnection(config)
+		if err != nil {
+			panic(err)
+		}
+		defer func() {
+			if cErr := peerConnection.Close(); cErr != nil {
+				fmt.Printf("cannot close peerConnection: %v\n", cErr)
+			}
+		}()
+
+		peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+			fmt.Printf("Peer Connection State has changed: %s\n", s.String())
+
+			if s == webrtc.PeerConnectionStateFailed {
+				fmt.Println("Peer Connection has gone to failed exiting")
+				resetSession()
+				reset <- true
+			}
+
+			if s == webrtc.PeerConnectionStateClosed {
+				fmt.Println("Peer Connection has gone to closed exiting")
+				resetSession()
+				reset <- true
+			}
+		})
+
+		peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+			fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
+
+			d.OnOpen(func() {
+				fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
+
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+				for range ticker.C {
+					message, sendErr := randutil.GenerateCryptoRandomString(15, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+					if sendErr != nil {
+						fmt.Printf("E: while sending 1: %v\n", sendErr)
+						break
+					}
+
+					fmt.Printf("Sending '%s'\n", message)
+					if sendErr = d.SendText(message); sendErr != nil {
+						fmt.Printf("E: while sending 1: %v\n", sendErr)
+						break
+					}
+				}
+			})
+
+			d.OnMessage(func(msg webrtc.DataChannelMessage) {
+				fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
+			})
+		})
+
+		// Waiting for and Import client-offer from signaling-server
+		offerData := repeat(getOfferFromServer, 2*time.Second)
+		offer := webrtc.SessionDescription{}
+		decode(offerData, &offer)
+		err = peerConnection.SetRemoteDescription(offer)
+		if err != nil {
+			panic(err)
+		}
+
+		// Create an answer
+		answer, err := peerConnection.CreateAnswer(nil)
+		if err != nil {
+			panic(err)
+		}
+
+		// Create channel that is blocked until ICE Gathering is complete
+		gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+		// Sets the LocalDescription, and start our UDP listeners
+		err = peerConnection.SetLocalDescription(answer)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println("waiting for gathering")
+		// Block until ICE Gathering is complete, disabling trickle ICE
+		// we do this because we only can exchange one signaling message
+		// TODO: in a production application you should exchange ICE Candidates via OnICECandidate
+		<-gatherComplete
+
+		// Push answer to signaling-server
+		answerSessionDescr := encode(peerConnection.LocalDescription())
+		fmt.Println("putting answer ...")
+		fmt.Printf("%s\n", answerSessionDescr)
+		_, err = http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/answer", "text/plain", strings.NewReader(answerSessionDescr))
+		if err != nil {
+			fmt.Printf("E: while posting answer to signaling server: %v\n", err)
+		}
+
+		<-reset
+	}
+}
+
+func getOfferFromServer() string {
+	resp, err := http.Get("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/offer")
+	if err != nil {
+		fmt.Printf("E: while getting offer from server: %v\n", err)
+		return ""
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("E: while reading offer from server: %v\n", err)
+		return ""
+	}
+	return string(respBody)
+}
+func getICEServersFromServer() ([]webrtc.ICEServer, error) {
+	resp, err := http.Get("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/ice-config")
+	if err != nil {
+		return nil, fmt.Errorf("E: while getting ice-config from server: %v\n", err)
+	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("E: while reading offer from server: %v\n", err)
+	}
+	var iceServers []webrtc.ICEServer
+	err = json.Unmarshal(respBody, &iceServers)
+	return iceServers, nil
+}
+
+func repeat(fn func() string, delay time.Duration) string {
+	for {
+		result := fn()
+		if len(result) > 0 {
+			return result
+		}
+		fmt.Printf("did not get a result, rerun in %v ...\n", delay)
+		time.Sleep(delay)
+	}
+}
+
+func resetSession() {
+	fmt.Println("reset session ...")
+	_, err := http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/answer", "text/plain", strings.NewReader(""))
+	if err != nil {
+		fmt.Printf("E: while resetting answer on signaling server: %v\n", err)
+		os.Exit(1)
+	}
+	_, err = http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/offer", "text/plain", strings.NewReader(""))
+	if err != nil {
+		fmt.Printf("E: while resetting offer on signaling server: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// JSON encode + base64 a SessionDescription
+func encode(obj *webrtc.SessionDescription) string {
+	b, err := json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+
+	return base64.StdEncoding.EncodeToString(b)
+}
+
+// Decode a base64 and unmarshal JSON into a SessionDescription
+func decode(in string, obj *webrtc.SessionDescription) {
+	b, err := base64.StdEncoding.DecodeString(in)
+	if err != nil {
+		panic(err)
+	}
+
+	if err = json.Unmarshal(b, obj); err != nil {
+		panic(err)
+	}
+}
