@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pion/randutil"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -25,6 +24,9 @@ func main() {
 	}
 
 	reset := make(chan bool, 1)
+	screen := Screen{}
+
+	go run(&screen, "/sbin/ping", []string{"-c100", "www.google.com"})
 
 	for {
 		// Create a new RTCPeerConnection
@@ -58,20 +60,15 @@ func main() {
 			fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
 
 			d.OnOpen(func() {
-				fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
+				fmt.Printf("Data channel '%s'-'%d' open.\n", d.Label(), d.ID())
 
-				ticker := time.NewTicker(5 * time.Second)
+				ticker := time.NewTicker(2 * time.Second)
 				defer ticker.Stop()
 				for range ticker.C {
-					message, sendErr := randutil.GenerateCryptoRandomString(15, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-					if sendErr != nil {
-						fmt.Printf("E: while sending 1: %v\n", sendErr)
-						break
-					}
-
-					fmt.Printf("Sending '%s'\n", message)
-					if sendErr = d.SendText(message); sendErr != nil {
-						fmt.Printf("E: while sending 1: %v\n", sendErr)
+					// fmt.Printf("Sending '%s'\n", screen.text)
+					err = d.SendText(screen.text)
+					if err != nil {
+						fmt.Printf("E: while sending: %v\n", err)
 						break
 					}
 				}
