@@ -26,7 +26,7 @@ func main() {
 	reset := make(chan bool, 1)
 	screen := Screen{}
 
-	go run(&screen, "/sbin/ping", []string{"-c100", "www.google.com"})
+	go run(&screen, "/bin/bash", []string{"./simple-counter.sh", "5"})
 
 	for {
 		// Create a new RTCPeerConnection
