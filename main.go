@@ -14,6 +14,7 @@ import (
 )
 
 func main() {
+	resetSession()
 	ICEServers, err := getICEServersFromServer()
 	if err != nil {
 		fmt.Printf("E: while getting ICEServers-config: %v\n", err)
@@ -113,7 +114,7 @@ func main() {
 		answerSessionDescr := encode(peerConnection.LocalDescription())
 		fmt.Println("putting answer ...")
 		fmt.Printf("%s\n", answerSessionDescr)
-		_, err = http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/answer", "text/plain", strings.NewReader(answerSessionDescr))
+		_, err = http.Post(genUrl("/answer"), "text/plain", strings.NewReader(answerSessionDescr))
 		if err != nil {
 			fmt.Printf("E: while posting answer to signaling server: %v\n", err)
 		}
@@ -123,7 +124,7 @@ func main() {
 }
 
 func getOfferFromServer() string {
-	resp, err := http.Get("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/offer")
+	resp, err := http.Get(genUrl("/offer"))
 	if err != nil {
 		fmt.Printf("E: while getting offer from server: %v\n", err)
 		return ""
@@ -136,7 +137,7 @@ func getOfferFromServer() string {
 	return string(respBody)
 }
 func getICEServersFromServer() ([]webrtc.ICEServer, error) {
-	resp, err := http.Get("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/ice-config")
+	resp, err := http.Get(genUrl("/ice-config"))
 	if err != nil {
 		return nil, fmt.Errorf("E: while getting ice-config from server: %v\n", err)
 	}
@@ -162,12 +163,12 @@ func repeat(fn func() string, delay time.Duration) string {
 
 func resetSession() {
 	fmt.Println("reset session ...")
-	_, err := http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/answer", "text/plain", strings.NewReader(""))
+	_, err := http.Post(genUrl("/answer"), "text/plain", strings.NewReader(""))
 	if err != nil {
 		fmt.Printf("E: while resetting answer on signaling server: %v\n", err)
 		os.Exit(1)
 	}
-	_, err = http.Post("http://165.22.91.102:8080/3373bd0b-788b-43d7-8b10-3023ef4bd267/offer", "text/plain", strings.NewReader(""))
+	_, err = http.Post(genUrl("/offer"), "text/plain", strings.NewReader(""))
 	if err != nil {
 		fmt.Printf("E: while resetting offer on signaling server: %v\n", err)
 		os.Exit(1)
@@ -194,4 +195,8 @@ func decode(in string, obj *webrtc.SessionDescription) {
 	if err = json.Unmarshal(b, obj); err != nil {
 		panic(err)
 	}
+}
+
+func genUrl(relPath string) string {
+	return fmt.Sprintf("http://165.22.91.102:8080/d43981bd-3822-4127-8cec-662f9a4d54f0%s", relPath)
 }
