@@ -1,5 +1,7 @@
 package main
 
-type Screen struct {
-	text string
+type Screen interface {
+	Init()
+	SetOutput(info ExecutionInfo)
+	SetError(err error)
 }

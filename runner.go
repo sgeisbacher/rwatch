@@ -1,36 +1,43 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os/exec"
+	"time"
 )
 
-func run(screen *Screen, commandName string, args []string) {
-	cmd := exec.Command(commandName, args...)
-	reader, err := cmd.StdoutPipe()
-	if err != nil {
-		screen.text = fmt.Sprintf("could not connect to command-stdout: %v\n", err)
-		return
-	}
-	err = cmd.Start()
-	if err != nil {
-		screen.text = fmt.Sprintf("could not start command: %v\n", err)
-		return
-	}
+type ExecutionInfo struct {
+	CommandStr string
+	ExecTime   time.Time
+	ExecCount  int64
+	Success    bool
+	Output     []byte
+}
 
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		fmt.Printf("got output line from command: %v\n", scanner.Text())
-		screen.text += scanner.Text() + "\n"
+func run(screen Screen, commandName string, args []string) {
+	go screen.Init()
+	var count int64
+	for {
+		count++
+		fmt.Printf("run: %d\n", count)
+		cmd := exec.Command(commandName, args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			screen.SetError(fmt.Errorf("could not run command: %w\n", err))
+			return
+		}
+
+		if !cmd.ProcessState.Success() {
+			screen.SetError(fmt.Errorf("command exited with error: %w\n", err))
+			return
+		}
+
+		screen.SetOutput(ExecutionInfo{
+			CommandStr: fmt.Sprintf("%s %v", commandName, args),
+			ExecTime:   time.Now(),
+			ExecCount:  count,
+			Output:     output,
+		})
+		time.Sleep(2 * time.Second)
 	}
-	// chunk := make([]byte, 150)
-	// for
-	// n, err := reader.Read(chunk)
-	// if err != nil {
-	// 	screen.text = fmt.Sprintf("could not read command output: %v\n", err)
-	// 	return
-	// }
-	// line := chunk[0:n]
-	// screen.text += string(line)
 }
