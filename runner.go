@@ -14,7 +14,7 @@ type ExecutionInfo struct {
 	Output     []byte
 }
 
-func run(screen Screen, commandName string, args []string) {
+func run(screen Screen, done chan bool, commandName string, args []string) {
 	go screen.Init()
 	var count int64
 	for {
@@ -39,5 +39,9 @@ func run(screen Screen, commandName string, args []string) {
 			Output:     output,
 		})
 		time.Sleep(2 * time.Second)
+		if count >= 40 {
+			done <- true
+			break
+		}
 	}
 }
