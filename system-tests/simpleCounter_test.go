@@ -18,6 +18,7 @@ import (
 const debug = false
 
 func TestSimpleCounter(t *testing.T) {
+	fmt.Println("test started")
 	go run()
 	time.Sleep(2 * time.Second)
 	var browser *rod.Browser
@@ -42,7 +43,18 @@ func TestSimpleCounter(t *testing.T) {
 
 		defer browser.MustClose()
 	} else {
-		browser = rod.New().MustConnect()
+		fmt.Println("browser connecting")
+		l := launcher.New().
+			NoSandbox(true).
+			Headless(true)
+		defer l.Cleanup()
+
+		fmt.Println("browser connecting 2")
+		url := l.MustLaunch()
+		browser = rod.New().ControlURL(url).MustConnect()
+		// browser = rod.New().MustConnect()
+		fmt.Println("browser connected")
+		defer browser.MustClose()
 	}
 	page := browser.MustPage(genUrl("/"))
 	termElem := page.MustElement("#terminal")
@@ -67,7 +79,6 @@ func run() {
 		// fmt.Printf("got output line from command: %v\n", scanner.Text())
 	}
 	cmd.Wait()
-
 }
 
 func genUrl(relPath string) string {
