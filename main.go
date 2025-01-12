@@ -9,7 +9,8 @@ import (
 func main() {
 	screen := WebRTCScreen{}
 
-	go run(&screen, "/bin/bash", []string{"./simple-counter.sh", "0", "5"})
+	runnerDone := make(chan bool, 1)
+	go run(&screen, runnerDone, "/bin/bash", []string{"./simple-counter.sh", "0", "5"})
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -18,6 +19,9 @@ func main() {
 	// 	for sig := range c {
 	// 	}
 	// }()
-	<-c
+	select {
+	case <-c:
+	case <-runnerDone:
+	}
 	fmt.Println("good bye!")
 }
