@@ -2,32 +2,33 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 	"time"
+
+	. "github.com/sgeisbacher/rwatch/utils"
 )
 
-type ExecutionInfo struct {
-	CommandStr string
-	ExecTime   time.Time
-	ExecCount  int64
-	Success    bool
-	Output     []byte
+type Executor interface {
+	CombinedOutput() ([]byte, error)
+	WasSuccess() bool
+}
+type Runner struct {
+	maxRunCount int64
+	executor    func(name string, arg ...string) Executor
 }
 
-func run(screen Screen, done chan bool, commandName string, args []string) {
+func (r *Runner) Run(screen Screen, done chan bool, commandName string, args []string) {
 	go screen.Init()
 	var count int64
 	for {
 		count++
-		fmt.Printf("run: %d\n", count)
-		cmd := exec.Command(commandName, args...)
+		cmd := r.executor(commandName, args...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			screen.SetError(fmt.Errorf("could not run command: %w\n", err))
 			return
 		}
 
-		if !cmd.ProcessState.Success() {
+		if !cmd.WasSuccess() {
 			screen.SetError(fmt.Errorf("command exited with error: %w\n", err))
 			return
 		}
@@ -39,7 +40,7 @@ func run(screen Screen, done chan bool, commandName string, args []string) {
 			Output:     output,
 		})
 		time.Sleep(2 * time.Second)
-		if count >= 40 {
+		if count >= r.maxRunCount {
 			done <- true
 			break
 		}
