@@ -15,7 +15,7 @@ type ExecutionInfoMatcher struct {
 	cmdStrMatcher    gomock.Matcher
 	execCountMatcher gomock.Matcher
 	successMatcher   gomock.Matcher
-	ouputMatcher     gomock.Matcher
+	outputMatcher    gomock.Matcher
 }
 
 func (m ExecutionInfoMatcher) Matches(x any) bool {
@@ -24,6 +24,9 @@ func (m ExecutionInfoMatcher) Matches(x any) bool {
 		return false
 	}
 	if m.execCountMatcher != nil && !m.execCountMatcher.Matches(info.ExecCount) {
+		return false
+	}
+	if m.outputMatcher != nil && !m.outputMatcher.Matches(info.Output) {
 		return false
 	}
 	return true
@@ -37,10 +40,13 @@ func (m ExecutionInfoMatcher) String() string {
 	if m.execCountMatcher != nil {
 		str += fmt.Sprintf("count: %s\n", m.execCountMatcher.String())
 	}
+	if m.outputMatcher != nil {
+		str += fmt.Sprintf("ouput: %s\n", m.outputMatcher.String())
+	}
 	return str
 }
 
-func TestRunner(t *testing.T) {
+func TestRunnerHappyPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	screenMock := mocks.NewMockScreen(ctrl)
 	executorMock := mocks.NewMockExecutor(ctrl)
@@ -51,15 +57,16 @@ func TestRunner(t *testing.T) {
 		},
 	}
 	setOuputMatcher := ExecutionInfoMatcher{
-		cmdStrMatcher:    gomock.Eq("cmd [arg1 arg2]"),
+		cmdStrMatcher:    gomock.Eq("ls [-l /tmp]"),
 		execCountMatcher: gomock.Eq(int64(1)),
+		outputMatcher:    gomock.Eq([]byte("-rw-r--r-- 1 stefan staff 5271 Jan  13 11:18 data.txt")),
 	}
 
 	screenMock.EXPECT().Init().Times(1)
 	screenMock.EXPECT().SetOutput(setOuputMatcher).Times(1)
-	executorMock.EXPECT().CombinedOutput().Times(1).Return([]byte("asdf"), nil)
+	executorMock.EXPECT().CombinedOutput().Times(1).Return([]byte("-rw-r--r-- 1 stefan staff 5271 Jan  13 11:18 data.txt"), nil)
 	executorMock.EXPECT().WasSuccess().Times(1).Return(true)
 
-	asdf := make(chan bool, 1)
-	runner.Run(screenMock, asdf, "cmd", []string{"arg1", "arg2"})
+	done := make(chan bool, 1)
+	runner.Run(screenMock, done, "ls", []string{"-l", "/tmp"})
 }
