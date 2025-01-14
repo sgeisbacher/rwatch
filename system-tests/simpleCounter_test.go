@@ -18,7 +18,7 @@ import (
 const debug = false
 
 func TestSimpleCounter(t *testing.T) {
-	go run()
+	go run("/bin/bash", "./simple-counter.sh", "0", "5")
 	time.Sleep(2 * time.Second)
 	var browser *rod.Browser
 	if debug {
@@ -57,8 +57,8 @@ func TestSimpleCounter(t *testing.T) {
 	assert.Equal(t, "counting: 1\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
 }
 
-func run() {
-	cmd := exec.Command("go", "run", ".", "--", "/bin/bash", "./simpleCounter.sh", "0", "5")
+func run(command ...string) {
+	cmd := exec.Command("go", append([]string{"run", ".", "--"}, command...)...)
 	cmd.Dir = ".."
 	reader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -72,7 +72,7 @@ func run() {
 	}
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		fmt.Printf("got output line from command: %v\n", scanner.Text())
+		// fmt.Printf("got output line from command: %v\n", scanner.Text())
 	}
 	cmd.Wait()
 }
