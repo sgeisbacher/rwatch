@@ -58,7 +58,7 @@ func TestSimpleCounter(t *testing.T) {
 }
 
 func run() {
-	cmd := exec.Command("go", "run", ".")
+	cmd := exec.Command("go", "run", ".", "--", "/bin/bash", "./simpleCounter.sh", "0", "5")
 	cmd.Dir = ".."
 	reader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -72,7 +72,7 @@ func run() {
 	}
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		// fmt.Printf("got output line from command: %v\n", scanner.Text())
+		fmt.Printf("got output line from command: %v\n", scanner.Text())
 	}
 	cmd.Wait()
 }
