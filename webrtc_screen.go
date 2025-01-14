@@ -128,7 +128,7 @@ func (screen *WebRTCScreen) SetOutput(info ExecutionInfo) {
 }
 
 func (screen *WebRTCScreen) SetError(err error) {
-	fmt.Println("SetError not yet implemented")
+	fmt.Printf("SetError not yet implemented, got: %v\n", err)
 }
 
 func getOfferFromServer() string {
