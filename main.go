@@ -11,7 +11,7 @@ func main() {
 	screen := WebRTCScreen{}
 
 	runnerDone := make(chan bool, 1)
-	runner := Runner{
+	runner := LoopRunner{
 		maxRunCount: 40,
 		executor: func(name string, arg ...string) Executor {
 			return &OsExecutor{exec.Command(name, arg...)}

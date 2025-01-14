@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	mocks "github.com/sgeisbacher/rwatch/mocks"
+	"github.com/sgeisbacher/rwatch/mocks"
 	"github.com/sgeisbacher/rwatch/utils"
 
 	// "github.com/stretchr/testify/assert"
@@ -46,11 +46,11 @@ func (m ExecutionInfoMatcher) String() string {
 	return str
 }
 
-func TestRunnerHappyPath(t *testing.T) {
+func TestLoopRunnerHappyPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	screenMock := mocks.NewMockScreen(ctrl)
 	executorMock := mocks.NewMockExecutor(ctrl)
-	runner := Runner{
+	runner := LoopRunner{
 		maxRunCount: 1,
 		executor: func(name string, arg ...string) Executor {
 			return executorMock
