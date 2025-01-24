@@ -36,7 +36,8 @@ func (r *LoopRunner) Run(screen Screen, done chan bool, commandName string, args
 			Output:     output,
 		})
 		time.Sleep(2 * time.Second)
-		if count >= r.maxRunCount {
+		if r.maxRunCount > 0 && count >= r.maxRunCount {
+			fmt.Printf("maxRunCount reached (%d)\n", r.maxRunCount)
 			done <- true
 			break
 		}

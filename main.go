@@ -1,10 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
+)
+
+var (
+	maxRunCount = flag.Int64("maxRunCount", 0, "how often the command should be run")
 )
 
 func main() {
@@ -14,7 +19,7 @@ func main() {
 
 	runnerDone := make(chan bool, 1)
 	runner := LoopRunner{
-		maxRunCount: 40,
+		maxRunCount: *maxRunCount,
 		executor: func(name string, arg ...string) Executor {
 			return &OsExecutor{exec.Command(name, arg...)}
 		}}
@@ -29,12 +34,18 @@ func main() {
 	// }()
 	select {
 	case <-c:
+		fmt.Println("got TERM signal")
 	case <-runnerDone:
+		fmt.Println("runner done")
 	}
 	fmt.Println("good bye!")
 }
 
 func parseArgs(args []string) (string, []string) {
+	// args
+	flag.Parse()
+
+	// command
 	position := -1
 	for i, arg := range args {
 		if arg == "--" {

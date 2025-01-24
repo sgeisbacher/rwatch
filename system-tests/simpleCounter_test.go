@@ -58,7 +58,8 @@ func TestSimpleCounter(t *testing.T) {
 }
 
 func run(command ...string) {
-	cmd := exec.Command("go", append([]string{"run", ".", "--"}, command...)...)
+	// TODO instead of maxRunCount we could send INT/TERM signal to subprocess when done
+	cmd := exec.Command("go", append([]string{"run", ".", "-maxRunCount", "40", "--"}, command...)...)
 	cmd.Dir = ".."
 	reader, err := cmd.StdoutPipe()
 	if err != nil {
