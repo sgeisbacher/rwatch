@@ -18,7 +18,7 @@ type WebRTCScreen struct {
 	latestExecution ExecutionInfo
 }
 
-func (screen *WebRTCScreen) Init() {
+func (screen *WebRTCScreen) InitScreen() {
 	resetSession()
 	ICEServers, err := getICEServersFromServer()
 	if err != nil {
