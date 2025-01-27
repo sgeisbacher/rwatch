@@ -35,6 +35,8 @@ jobs:
           go-version: "1.23.3"
 
       - uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 131
       - run: chrome --version
 
       - name: System Tests
