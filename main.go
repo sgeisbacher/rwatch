@@ -25,21 +25,25 @@ func main() {
 	// Setup WebRTC Screen
 	tuiScreen := TuiScreen{}
 
+	// setup bubbletea
+	tui := tea.NewProgram(&tuiScreen, tea.WithAltScreen())
+
 	// Setup Runner
 	runnerDone := make(chan bool, 1)
 	runner := LoopRunner{
 		maxRunCount: *maxRunCount,
 		executor: func(name string, arg ...string) Executor {
 			return &OsExecutor{exec.Command(name, arg...)}
-		}}
+		},
+		onDone: func() { tui.Quit() },
+	}
 	screen := MultiplexerScreen{
 		screens: []utils.Screen{&tuiScreen, &webRTCScreen},
 	}
 	go runner.Run(&screen, runnerDone, command, args)
 
-	// start bubbletea
-	p := tea.NewProgram(&tuiScreen, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	// start tui
+	if _, err := tui.Run(); err != nil {
 		fmt.Printf("E: bubbletea: %v\n", err)
 	}
 

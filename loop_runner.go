@@ -10,6 +10,7 @@ import (
 type LoopRunner struct {
 	maxRunCount int64
 	executor    func(name string, arg ...string) Executor
+	onDone      func()
 }
 
 func (r *LoopRunner) Run(screen Screen, done chan bool, commandName string, args []string) {
@@ -40,6 +41,7 @@ func (r *LoopRunner) Run(screen Screen, done chan bool, commandName string, args
 		time.Sleep(2 * time.Second)
 		if r.maxRunCount > 0 && count >= r.maxRunCount {
 			fmt.Printf("maxRunCount reached (%d)\n", r.maxRunCount)
+			r.onDone()
 			done <- true
 			break
 		}
