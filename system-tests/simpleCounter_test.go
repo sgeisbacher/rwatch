@@ -53,8 +53,11 @@ func TestSimpleCounter(t *testing.T) {
 		defer browser.MustClose()
 	}
 	page := browser.MustPage(genUrl("/"))
-	termElem := page.MustElement("#terminal")
-	assert.Equal(t, "counting: 1\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
+	termElem, _ := page.Timeout(2 * time.Minute).Element("#terminal")
+	html, err := page.HTML()
+	assert.Nil(t, err)
+	assert.Equal(t, "somehtml", html)
+	assert.Equal(t, "counting: 2\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
 }
 
 func run(command ...string) {
