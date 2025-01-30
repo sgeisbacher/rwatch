@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	// "os/signal"
+	"os/signal"
 
-	tea "github.com/charmbracelet/bubbletea"
+	// tea "github.com/charmbracelet/bubbletea"
 	"github.com/sgeisbacher/rwatch/utils"
 )
 
@@ -23,10 +23,10 @@ func main() {
 	webRTCScreen := WebRTCScreen{}
 
 	// Setup WebRTC Screen
-	tuiScreen := TuiScreen{}
+	tuiScreen := SimpleScreen{} // TuiScreen{}
 
 	// setup bubbletea
-	tui := tea.NewProgram(&tuiScreen, tea.WithAltScreen())
+	// tui := tea.NewProgram(&tuiScreen, tea.WithAltScreen())
 
 	// Setup Runner
 	runnerDone := make(chan bool, 1)
@@ -35,7 +35,7 @@ func main() {
 		executor: func(name string, arg ...string) Executor {
 			return &OsExecutor{exec.Command(name, arg...)}
 		},
-		onDone: func() { tui.Quit() },
+		//onDone: func() { tui.Quit() },
 	}
 	screen := MultiplexerScreen{
 		screens: []utils.Screen{&tuiScreen, &webRTCScreen},
@@ -43,23 +43,23 @@ func main() {
 	go runner.Run(&screen, runnerDone, command, args)
 
 	// start tui
-	if _, err := tui.Run(); err != nil {
-		fmt.Printf("E: bubbletea: %v\n", err)
-	}
+	// if _, err := tui.Run(); err != nil {
+	// 	fmt.Printf("E: bubbletea: %v\n", err)
+	// }
 
-	// c := make(chan os.Signal, 1)
-	// signal.Notify(c, os.Interrupt)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 	// TODO handle shutdown
 	// go func() {
 	// 	for sig := range c {
 	// 	}
 	// }()
-	// select {
-	// case <-c:
-	// 	fmt.Println("got TERM signal")
-	// case <-runnerDone:
-	// 	fmt.Println("runner done")
-	// }
+	select {
+	case <-c:
+		fmt.Println("got TERM signal")
+	case <-runnerDone:
+		fmt.Println("runner done")
+	}
 	fmt.Println("good bye!")
 }
 
