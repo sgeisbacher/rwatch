@@ -53,10 +53,9 @@ func TestSimpleCounter(t *testing.T) {
 		defer browser.MustClose()
 	}
 	page := browser.MustPage(genUrl("/"))
-	termElem, _ := page.Timeout(3 * time.Minute).Element("#terminal")
-	html, err := page.HTML()
+	termElem, err := page.Timeout(3 * time.Minute).Element("#terminal")
 	assert.Nil(t, err)
-	assert.Equal(t, "somehtml", html)
+	// assert.Equal(t, "somehtml", html)
 	assert.Equal(t, "counting: 2\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
 }
 
