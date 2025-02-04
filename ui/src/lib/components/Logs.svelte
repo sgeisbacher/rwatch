@@ -8,10 +8,10 @@
 </script>
 
 <div>
-	Logs:<br />
+	Logs ({logs.length}):<br />
 	<ul>
-    {#each logs as log}
-		<li>{log.level[0].toUpperCase()} - {log.msg}</li>
-    {/each}
+		{#each logs as log}
+			<li>{log.level[0].toUpperCase()} - {log.msg}</li>
+		{/each}
 	</ul>
 </div>
