@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -16,6 +17,12 @@ const WIDTH = 120
 const TIME_FORMAT = "02-Jan-06 15:04:05"
 
 type TuiScreen struct {
+	appState *appStateManager
+	model    *TuiBubbleTeaModel
+	tui      *tea.Program
+}
+type TuiBubbleTeaModel struct {
+	appState      *appStateManager
 	termPanel     viewport.Model
 	eventLogPanel viewport.Model
 	runInfo       utils.ExecutionInfo
@@ -56,23 +63,46 @@ var (
 type tickMsg time.Time
 
 func (ts *TuiScreen) InitScreen() {
-	ts.termPanel = viewport.New(WIDTH, 20)
-	ts.termPanel.Style = focusedBorderStyle
+	ts.model = &TuiBubbleTeaModel{
+		appState: ts.appState,
+	}
+	ts.tui = tea.NewProgram(ts.model, tea.WithAltScreen())
+}
+
+func (ts *TuiScreen) Run(runnerDone chan bool) {
+	for {
+		if ts.tui != nil {
+			break
+		}
+	}
+	if _, err := ts.tui.Run(); err != nil {
+		fmt.Printf("E: bubbletea: %v\n", err)
+	}
 }
 
 func (ts *TuiScreen) SetOutput(info utils.ExecutionInfo) {
-	ts.runInfo = info
+	if ts.model != nil {
+		ts.model.runInfo = info
+	}
 }
 
-func (ts *TuiScreen) SetError(err error) {
+func (ts *TuiScreen) SetError(err error) {}
 
+func (ts *TuiScreen) Done() {
+	ts.tui.Quit()
 }
 
-func (ts *TuiScreen) Init() tea.Cmd {
+func (ts *TuiBubbleTeaModel) Init() tea.Cmd {
+	ts.termPanel = viewport.New(WIDTH, 20)
+	ts.termPanel.Style = focusedBorderStyle
+	ts.eventLogPanel = viewport.New(WIDTH, 10)
+	ts.eventLogPanel.Style = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#817e82")).
+		MarginLeft(2)
 	return tick()
 }
 
-func (ts *TuiScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (ts *TuiBubbleTeaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// TODO remove duplicate
 	quitKey := key.NewBinding(
 		key.WithKeys("esc", "ctrl+c"),
@@ -97,7 +127,7 @@ func (ts *TuiScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return ts, tick()
 }
 
-func (ts *TuiScreen) View() string {
+func (tm *TuiBubbleTeaModel) View() string {
 	// TODO remove duplicate
 	quitKey := key.NewBinding(
 		key.WithKeys("esc", "ctrl+c"),
@@ -113,27 +143,41 @@ func (ts *TuiScreen) View() string {
 	})
 
 	w := lipgloss.Width
-	ts.termPanel.SetContent(string(ts.runInfo.Output))
+
+	// logs
+	logMessages := []string{}
+	for _, logEvent := range tm.appState.logs {
+		msg := fmt.Sprintf("%s: %s", logEvent.timestamp.Format(TIME_FORMAT), logEvent.msg)
+		logMessages = append(logMessages, msg)
+	}
+	tm.eventLogPanel.SetContent(strings.Join(logMessages, "\n"))
+
+	// term
+	tm.termPanel.SetContent(string(tm.runInfo.Output))
+
+	// status line
 	var sline_lstatus string
-	if ts.runInfo.Success {
+	if tm.runInfo.Success {
 		sline_lstatus = statusLabelOKStyle.Render("OK")
 	} else {
 		sline_lstatus = statusLabelFAILEDStyle.Render("FAILED")
 	}
 	sline_rstatus := statusLabelNeutralStyle.
 		MarginRight(0).
-		Render("UNKNOWN")
+		Render(tm.appState.Current().Name)
 	sline_rlabel := statusTextStyle.
 		Render("WebRTC:")
 	sline_runs := statusTextStyle.
 		AlignHorizontal(lipgloss.Center).
 		Width(WIDTH - w(sline_lstatus) - w(sline_rlabel) - w(sline_rstatus)).
-		Render(fmt.Sprintf("Run: %d (%v) ", ts.runInfo.ExecCount, ts.runInfo.ExecTime.Format(TIME_FORMAT)))
+		Render(fmt.Sprintf("Run: %d (%v) ", tm.runInfo.ExecCount, tm.runInfo.ExecTime.Format(TIME_FORMAT)))
 	statusLine := lipgloss.JoinHorizontal(lipgloss.Top, sline_lstatus, sline_runs, sline_rlabel, sline_rstatus)
 
+	// join
 	views := []string{
 		statusLine,
-		ts.termPanel.View(),
+		tm.termPanel.View(),
+		tm.eventLogPanel.View(),
 		helpLine,
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, views...)
