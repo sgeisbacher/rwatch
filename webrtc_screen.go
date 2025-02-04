@@ -19,9 +19,11 @@ type WebRTCScreen struct {
 	latestExecution ExecutionInfo
 }
 
-func createLogger(appState *appStateManager) func(msg string) {
-	return func(msg string) {
-		appState.Log(msg)
+type logFn = func(format string, a ...any)
+
+func createLogger(appState *appStateManager) logFn {
+	return func(format string, a ...any) {
+		appState.Log(fmt.Sprintf(format, a...))
 	}
 }
 func (screen *WebRTCScreen) InitScreen() {
@@ -30,7 +32,7 @@ func (screen *WebRTCScreen) InitScreen() {
 	resetSession(log)
 	ICEServers, err := getICEServersFromServer()
 	if err != nil {
-		log(fmt.Sprintf("E: while getting ICEServers-config: %v", err))
+		log("E: while getting ICEServers-config: %v", err)
 		// TODO avoid panic, handle this
 		panic("check your internet connection")
 	}
@@ -49,12 +51,12 @@ func (screen *WebRTCScreen) InitScreen() {
 		}
 		defer func() {
 			if cErr := peerConnection.Close(); cErr != nil {
-				log(fmt.Sprintf("cannot close peerConnection: %v", cErr))
+				log("cannot close peerConnection: %v", cErr)
 			}
 		}()
 
 		peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-			log(fmt.Sprintf("Peer Connection State has changed: %s", s.String()))
+			log("Peer Connection State has changed: %s", s.String())
 
 			if s == webrtc.PeerConnectionStateConnecting {
 				screen.appState.SetState(WEBRTC_STATE_CONNECTING)
@@ -72,10 +74,10 @@ func (screen *WebRTCScreen) InitScreen() {
 		})
 
 		peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
-			log(fmt.Sprintf("New DataChannel %s %d", d.Label(), d.ID()))
+			log("New DataChannel %s %d", d.Label(), d.ID())
 
 			d.OnOpen(func() {
-				log(fmt.Sprintf("Data channel '%s'-'%d' open.", d.Label(), d.ID()))
+				log("Data channel '%s'-'%d' open.", d.Label(), d.ID())
 
 				ticker := time.NewTicker(2 * time.Second)
 				defer ticker.Stop()
@@ -83,14 +85,14 @@ func (screen *WebRTCScreen) InitScreen() {
 					// //log fmt.Printf("Sending '%s'\n", screen.text)
 					err = d.SendText(string(screen.latestExecution.Output))
 					if err != nil {
-						log(fmt.Sprintf("E: while sending: %v", err))
+						log("E: while sending: %v", err)
 						break
 					}
 				}
 			})
 
 			d.OnMessage(func(msg webrtc.DataChannelMessage) {
-				log(fmt.Sprintf("Message from DataChannel '%s': '%s'", d.Label(), string(msg.Data)))
+				log("Message from DataChannel '%s': '%s'", d.Label(), string(msg.Data))
 			})
 		})
 
@@ -134,7 +136,7 @@ func (screen *WebRTCScreen) InitScreen() {
 		//log fmt.Printf("%s\n", answerSessionDescr)
 		_, err = http.Post(genUrl("/answer"), "text/plain", strings.NewReader(answerSessionDescr))
 		if err != nil {
-			log(fmt.Sprintf("E: while posting answer to signaling server: %v", err))
+			log("E: while posting answer to signaling server: %v", err)
 		}
 
 		<-reset
@@ -153,15 +155,15 @@ func (screen *WebRTCScreen) SetError(err error) {
 
 func (screen *WebRTCScreen) Done() {}
 
-func getOfferFromServer(log func(msg string)) string {
+func getOfferFromServer(log logFn) string {
 	resp, err := http.Get(genUrl("/offer"))
 	if err != nil {
-		log(fmt.Sprintf("E: while getting offer from server: %v", err))
+		log("E: while getting offer from server: %v", err)
 		return ""
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log(fmt.Sprintf("E: while reading offer from server: %v", err))
+		log("E: while reading offer from server: %v", err)
 		return ""
 	}
 	return string(respBody)
@@ -191,17 +193,17 @@ func repeat(fn func() string, delay time.Duration) string {
 	}
 }
 
-func resetSession(log func(msg string)) {
+func resetSession(log logFn) {
 	log("reset session ...")
 	_, err := http.Post(genUrl("/answer"), "text/plain", strings.NewReader(""))
 	if err != nil {
-		log(fmt.Sprintf("E: while resetting answer on signaling server: %v", err))
+		log("E: while resetting answer on signaling server: %v", err)
 		// TODO avoid panic, handle
 		os.Exit(1)
 	}
 	_, err = http.Post(genUrl("/offer"), "text/plain", strings.NewReader(""))
 	if err != nil {
-		log(fmt.Sprintf("E: while resetting offer on signaling server: %v", err))
+		log("E: while resetting offer on signaling server: %v", err)
 		// TODO avoid panic, handle
 		os.Exit(1)
 	}
