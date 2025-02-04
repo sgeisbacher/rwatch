@@ -40,38 +40,38 @@ func (m *MockScreen) EXPECT() *MockScreenMockRecorder {
 	return m.recorder
 }
 
-// Init mocks base method.
-func (m *MockScreen) Init() {
+// InitScreen mocks base method.
+func (m *MockScreen) InitScreen() {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Init")
+	m.ctrl.Call(m, "InitScreen")
 }
 
-// Init indicates an expected call of Init.
-func (mr *MockScreenMockRecorder) Init() *MockScreenInitCall {
+// InitScreen indicates an expected call of InitScreen.
+func (mr *MockScreenMockRecorder) InitScreen() *MockScreenInitScreenCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockScreen)(nil).Init))
-	return &MockScreenInitCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitScreen", reflect.TypeOf((*MockScreen)(nil).InitScreen))
+	return &MockScreenInitScreenCall{Call: call}
 }
 
-// MockScreenInitCall wrap *gomock.Call
-type MockScreenInitCall struct {
+// MockScreenInitScreenCall wrap *gomock.Call
+type MockScreenInitScreenCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockScreenInitCall) Return() *MockScreenInitCall {
+func (c *MockScreenInitScreenCall) Return() *MockScreenInitScreenCall {
 	c.Call = c.Call.Return()
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockScreenInitCall) Do(f func()) *MockScreenInitCall {
+func (c *MockScreenInitScreenCall) Do(f func()) *MockScreenInitScreenCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockScreenInitCall) DoAndReturn(f func()) *MockScreenInitCall {
+func (c *MockScreenInitScreenCall) DoAndReturn(f func()) *MockScreenInitScreenCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

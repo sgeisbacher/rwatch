@@ -1,7 +1,7 @@
 package utils
 
 type Screen interface {
-	Init()
+	InitScreen()
 	SetOutput(info ExecutionInfo)
 	SetError(err error)
 }

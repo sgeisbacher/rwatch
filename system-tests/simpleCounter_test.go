@@ -53,7 +53,9 @@ func TestSimpleCounter(t *testing.T) {
 		defer browser.MustClose()
 	}
 	page := browser.MustPage(genUrl("/"))
-	termElem := page.MustElement("#terminal")
+	termElem, err := page.Timeout(3 * time.Minute).Element("#terminal")
+	assert.Nil(t, err)
+	// assert.Equal(t, "somehtml", html)
 	assert.Equal(t, "counting: 1\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
 }
 
@@ -73,7 +75,7 @@ func run(command ...string) {
 	}
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		// fmt.Printf("got output line from command: %v\n", scanner.Text())
+		fmt.Printf("got output line from command: %v\n", scanner.Text())
 	}
 	cmd.Wait()
 }
