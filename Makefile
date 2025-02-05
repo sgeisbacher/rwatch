@@ -4,4 +4,6 @@ gen-mocks:
 
 deploy-ui:
 	test -n "$(HOST)"
-	scp -r ui/index.html ui/conn.js $(HOST):/opt/rwatch/server/ui/
+	cd ui && npm run build
+	ssh $(HOST) "rm -rf $(HOST):/opt/rwatch/server/ui/"
+	scp -r ui/build/* $(HOST):/opt/rwatch/server/ui/
