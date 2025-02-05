@@ -5,28 +5,30 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/signal"
 
-	// tea "github.com/charmbracelet/bubbletea"
 	"github.com/sgeisbacher/rwatch/utils"
 )
 
 var (
-	maxRunCount = flag.Int64("maxRunCount", 0, "how often the command should be run")
+	maxRunCount        = flag.Int64("max-run-count", 0, "how often the command should be run")
+	usePlainTextScreen = flag.Bool("plain-text-screen", false, "dont show command output in fancy bubbletea-screen but just simple plaintext-screen")
 )
 
 func main() {
 	command, args := parseArgs(os.Args)
 	fmt.Printf("command: %s, args: %v\n", command, args)
 
-	// Setup WebRTC Screen
-	webRTCScreen := WebRTCScreen{}
+	// Setup AppState
+	appState := createAppState()
+
+	// Setup local screen
+	var localScreen utils.Screen = &PlainTextScreen{}
+	if !*usePlainTextScreen {
+		localScreen = &TuiScreen{appState: appState}
+	}
 
 	// Setup WebRTC Screen
-	tuiScreen := SimpleScreen{} // TuiScreen{}
-
-	// setup bubbletea
-	// tui := tea.NewProgram(&tuiScreen, tea.WithAltScreen())
+	webRTCScreen := &WebRTCScreen{appState: appState}
 
 	// Setup Runner
 	runnerDone := make(chan bool, 1)
@@ -35,31 +37,13 @@ func main() {
 		executor: func(name string, arg ...string) Executor {
 			return &OsExecutor{exec.Command(name, arg...)}
 		},
-		//onDone: func() { tui.Quit() },
 	}
 	screen := MultiplexerScreen{
-		screens: []utils.Screen{&tuiScreen, &webRTCScreen},
+		screens: []utils.Screen{localScreen, webRTCScreen},
 	}
 	go runner.Run(&screen, runnerDone, command, args)
 
-	// start tui
-	// if _, err := tui.Run(); err != nil {
-	// 	fmt.Printf("E: bubbletea: %v\n", err)
-	// }
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	// TODO handle shutdown
-	// go func() {
-	// 	for sig := range c {
-	// 	}
-	// }()
-	select {
-	case <-c:
-		fmt.Println("got TERM signal")
-	case <-runnerDone:
-		fmt.Println("runner done")
-	}
+	localScreen.Run(runnerDone)
 	fmt.Println("good bye!")
 }
 

@@ -12,6 +12,12 @@ func (ms *MultiplexerScreen) InitScreen() {
 	}
 }
 
+func (ms *MultiplexerScreen) Run(runnerDone chan bool) {
+	for _, screen := range ms.screens {
+		screen.Run(runnerDone)
+	}
+}
+
 func (ms *MultiplexerScreen) SetOutput(info utils.ExecutionInfo) {
 	for _, screen := range ms.screens {
 		screen.SetOutput(info)
@@ -21,5 +27,11 @@ func (ms *MultiplexerScreen) SetOutput(info utils.ExecutionInfo) {
 func (ms *MultiplexerScreen) SetError(err error) {
 	for _, screen := range ms.screens {
 		screen.SetError(err)
+	}
+}
+
+func (ms *MultiplexerScreen) Done() {
+	for _, screen := range ms.screens {
+		screen.Done()
 	}
 }

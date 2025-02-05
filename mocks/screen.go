@@ -40,6 +40,42 @@ func (m *MockScreen) EXPECT() *MockScreenMockRecorder {
 	return m.recorder
 }
 
+// Done mocks base method.
+func (m *MockScreen) Done() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Done")
+}
+
+// Done indicates an expected call of Done.
+func (mr *MockScreenMockRecorder) Done() *MockScreenDoneCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Done", reflect.TypeOf((*MockScreen)(nil).Done))
+	return &MockScreenDoneCall{Call: call}
+}
+
+// MockScreenDoneCall wrap *gomock.Call
+type MockScreenDoneCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockScreenDoneCall) Return() *MockScreenDoneCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockScreenDoneCall) Do(f func()) *MockScreenDoneCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockScreenDoneCall) DoAndReturn(f func()) *MockScreenDoneCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // InitScreen mocks base method.
 func (m *MockScreen) InitScreen() {
 	m.ctrl.T.Helper()
@@ -72,6 +108,42 @@ func (c *MockScreenInitScreenCall) Do(f func()) *MockScreenInitScreenCall {
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockScreenInitScreenCall) DoAndReturn(f func()) *MockScreenInitScreenCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// Run mocks base method.
+func (m *MockScreen) Run(runnerDone chan bool) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Run", runnerDone)
+}
+
+// Run indicates an expected call of Run.
+func (mr *MockScreenMockRecorder) Run(runnerDone any) *MockScreenRunCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockScreen)(nil).Run), runnerDone)
+	return &MockScreenRunCall{Call: call}
+}
+
+// MockScreenRunCall wrap *gomock.Call
+type MockScreenRunCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockScreenRunCall) Return() *MockScreenRunCall {
+	c.Call = c.Call.Return()
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockScreenRunCall) Do(f func(chan bool)) *MockScreenRunCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockScreenRunCall) DoAndReturn(f func(chan bool)) *MockScreenRunCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

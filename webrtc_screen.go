@@ -15,14 +15,25 @@ import (
 )
 
 type WebRTCScreen struct {
+	appState        *appStateManager
 	latestExecution ExecutionInfo
 }
 
+type logFn = func(format string, a ...any)
+
+func createLogger(appState *appStateManager) logFn {
+	return func(format string, a ...any) {
+		appState.Log(fmt.Sprintf(format, a...))
+	}
+}
 func (screen *WebRTCScreen) InitScreen() {
-	resetSession()
+	log := createLogger(screen.appState)
+
+	resetSession(log)
 	ICEServers, err := getICEServersFromServer()
 	if err != nil {
-		//log fmt.Printf("E: while getting ICEServers-config: %v\n", err)
+		log("E: while getting ICEServers-config: %v", err)
+		// TODO avoid panic, handle this
 		panic("check your internet connection")
 	}
 	config := webrtc.Configuration{
@@ -31,6 +42,8 @@ func (screen *WebRTCScreen) InitScreen() {
 
 	reset := make(chan bool, 1)
 	for {
+		screen.appState.SetState(WEBRTC_STATE_CREATING_SESSION)
+
 		// Create a new RTCPeerConnection
 		peerConnection, err := webrtc.NewPeerConnection(config)
 		if err != nil {
@@ -38,31 +51,33 @@ func (screen *WebRTCScreen) InitScreen() {
 		}
 		defer func() {
 			if cErr := peerConnection.Close(); cErr != nil {
-				//log fmt.Printf("cannot close peerConnection: %v\n", cErr)
+				log("cannot close peerConnection: %v", cErr)
 			}
 		}()
 
 		peerConnection.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-			//log fmt.Printf("Peer Connection State has changed: %s\n", s.String())
+			log("Peer Connection State has changed: %s", s.String())
 
-			if s == webrtc.PeerConnectionStateFailed {
-				//log fmt.Println("Peer Connection has gone to failed exiting")
-				resetSession()
-				reset <- true
+			if s == webrtc.PeerConnectionStateConnecting {
+				screen.appState.SetState(WEBRTC_STATE_CONNECTING)
 			}
-
+			if s == webrtc.PeerConnectionStateConnected {
+				screen.appState.SetState(WEBRTC_STATE_TRANSFER)
+			}
 			if s == webrtc.PeerConnectionStateClosed {
-				//log fmt.Println("Peer Connection has gone to closed exiting")
-				resetSession()
+				log("Peer Connection has gone to closed exiting")
+				screen.appState.SetState(WEBRTC_STATE_FAILED)
+				time.Sleep(5 * time.Second)
+				resetSession(log)
 				reset <- true
 			}
 		})
 
 		peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
-			//log fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
+			log("New DataChannel %s %d", d.Label(), d.ID())
 
 			d.OnOpen(func() {
-				//log fmt.Printf("Data channel '%s'-'%d' open.\n", d.Label(), d.ID())
+				log("Data channel '%s'-'%d' open.", d.Label(), d.ID())
 
 				ticker := time.NewTicker(2 * time.Second)
 				defer ticker.Stop()
@@ -70,29 +85,32 @@ func (screen *WebRTCScreen) InitScreen() {
 					// //log fmt.Printf("Sending '%s'\n", screen.text)
 					err = d.SendText(string(screen.latestExecution.Output))
 					if err != nil {
-						//log fmt.Printf("E: while sending: %v\n", err)
+						log("E: while sending: %v", err)
 						break
 					}
 				}
 			})
 
 			d.OnMessage(func(msg webrtc.DataChannelMessage) {
-				//log fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
+				log("Message from DataChannel '%s': '%s'", d.Label(), string(msg.Data))
 			})
 		})
 
 		// Waiting for and Import client-offer from signaling-server
-		offerData := repeat(getOfferFromServer, 2*time.Second)
+		screen.appState.SetState(WEBRTC_STATE_AWAITING_CLIENT)
+		offerData := repeat(func() string { return getOfferFromServer(log) }, 2*time.Second)
 		offer := webrtc.SessionDescription{}
 		decode(offerData, &offer)
 		err = peerConnection.SetRemoteDescription(offer)
 		if err != nil {
+			// TODO avoid panic, handle
 			panic(err)
 		}
 
 		// Create an answer
 		answer, err := peerConnection.CreateAnswer(nil)
 		if err != nil {
+			// TODO avoid panic, handle
 			panic(err)
 		}
 
@@ -102,6 +120,7 @@ func (screen *WebRTCScreen) InitScreen() {
 		// Sets the LocalDescription, and start our UDP listeners
 		err = peerConnection.SetLocalDescription(answer)
 		if err != nil {
+			// TODO avoid panic, handle
 			panic(err)
 		}
 
@@ -113,33 +132,38 @@ func (screen *WebRTCScreen) InitScreen() {
 
 		// Push answer to signaling-server
 		answerSessionDescr := encode(peerConnection.LocalDescription())
-		//log fmt.Println("putting answer ...")
+		log("sending answer ...")
 		//log fmt.Printf("%s\n", answerSessionDescr)
 		_, err = http.Post(genUrl("/answer"), "text/plain", strings.NewReader(answerSessionDescr))
 		if err != nil {
-			//log fmt.Printf("E: while posting answer to signaling server: %v\n", err)
+			log("E: while posting answer to signaling server: %v", err)
 		}
 
 		<-reset
 	}
 }
+
+func (screen *WebRTCScreen) Run(runnerDone chan bool) {}
+
 func (screen *WebRTCScreen) SetOutput(info ExecutionInfo) {
 	screen.latestExecution = info
 }
 
 func (screen *WebRTCScreen) SetError(err error) {
-	//log fmt.Printf("SetError not yet implemented, got: %v\n", err)
+	screen.appState.Log(fmt.Sprintf("SetError not yet implemented, got: %v", err))
 }
 
-func getOfferFromServer() string {
+func (screen *WebRTCScreen) Done() {}
+
+func getOfferFromServer(log logFn) string {
 	resp, err := http.Get(genUrl("/offer"))
 	if err != nil {
-		//log fmt.Printf("E: while getting offer from server: %v\n", err)
+		log("E: while getting offer from server: %v", err)
 		return ""
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		//log fmt.Printf("E: while reading offer from server: %v\n", err)
+		log("E: while reading offer from server: %v", err)
 		return ""
 	}
 	return string(respBody)
@@ -147,11 +171,11 @@ func getOfferFromServer() string {
 func getICEServersFromServer() ([]webrtc.ICEServer, error) {
 	resp, err := http.Get(genUrl("/ice-config"))
 	if err != nil {
-		return nil, fmt.Errorf("E: while getting ice-config from server: %v\n", err)
+		return nil, fmt.Errorf("E: while getting ice-config from server: %v", err)
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("E: while reading offer from server: %v\n", err)
+		return nil, fmt.Errorf("E: while reading offer from server: %v", err)
 	}
 	var iceServers []webrtc.ICEServer
 	err = json.Unmarshal(respBody, &iceServers)
@@ -169,16 +193,18 @@ func repeat(fn func() string, delay time.Duration) string {
 	}
 }
 
-func resetSession() {
-	//log fmt.Println("reset session ...")
+func resetSession(log logFn) {
+	log("reset session ...")
 	_, err := http.Post(genUrl("/answer"), "text/plain", strings.NewReader(""))
 	if err != nil {
-		//log fmt.Printf("E: while resetting answer on signaling server: %v\n", err)
+		log("E: while resetting answer on signaling server: %v", err)
+		// TODO avoid panic, handle
 		os.Exit(1)
 	}
 	_, err = http.Post(genUrl("/offer"), "text/plain", strings.NewReader(""))
 	if err != nil {
-		//log fmt.Printf("E: while resetting offer on signaling server: %v\n", err)
+		log("E: while resetting offer on signaling server: %v", err)
+		// TODO avoid panic, handle
 		os.Exit(1)
 	}
 }
