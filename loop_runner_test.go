@@ -66,6 +66,7 @@ func TestLoopRunnerHappyPath(t *testing.T) {
 	screenMock.EXPECT().SetOutput(setOuputMatcher).Times(1)
 	executorMock.EXPECT().CombinedOutput().Times(1).Return([]byte("-rw-r--r-- 1 stefan staff 5271 Jan  13 11:18 data.txt"), nil)
 	executorMock.EXPECT().WasSuccess().Times(1).Return(true)
+	screenMock.EXPECT().Done().Times(1)
 
 	done := make(chan bool, 1)
 	runner.Run(screenMock, done, "ls", []string{"-l", "/tmp"})
