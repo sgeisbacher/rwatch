@@ -5,19 +5,17 @@
 	const { data }: Props = $props();
 </script>
 
-<style>
-      pre#terminal {
-        background-color: black;
-        color: white;
-        padding: 10px;
-      }
-</style>
-
 <div>
 	Terminal-Output:<br />
-	<pre id="terminal">
-    {#each data as line}
-		{line}
-    {/each}
-	</pre>
+	{#if data.length > 0}
+		<pre id="terminal">{#each data as line}{line}{/each}</pre>
+	{/if}
 </div>
+
+<style>
+	pre#terminal {
+		background-color: black;
+		color: white;
+		padding: 10px;
+	}
+</style>
