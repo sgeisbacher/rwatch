@@ -14,7 +14,7 @@ import (
 )
 
 const WIDTH = 120
-const TIME_FORMAT = "02-Jan-06 15:04:05"
+const TIME_FORMAT = "15:04:05" //"02-Jan-06 15:04:05"
 
 type TuiScreen struct {
 	appState *appStateManager
@@ -147,10 +147,11 @@ func (tm *TuiBubbleTeaModel) View() string {
 	// logs
 	logMessages := []string{}
 	for _, logEvent := range tm.appState.logs {
-		msg := fmt.Sprintf("%s: %s", logEvent.timestamp.Format(TIME_FORMAT), logEvent.msg)
+		msg := fmt.Sprintf("%s %s", logEvent.timestamp.Format(TIME_FORMAT), logEvent.msg)
 		logMessages = append(logMessages, msg)
 	}
 	tm.eventLogPanel.SetContent(strings.Join(logMessages, "\n"))
+	tm.eventLogPanel.SetYOffset(len(logMessages))
 
 	// term
 	tm.termPanel.SetContent(string(tm.runInfo.Output))
@@ -178,6 +179,7 @@ func (tm *TuiBubbleTeaModel) View() string {
 		statusLine,
 		tm.termPanel.View(),
 		tm.eventLogPanel.View(),
+		"",
 		helpLine,
 	}
 	return lipgloss.JoinVertical(lipgloss.Top, views...)
