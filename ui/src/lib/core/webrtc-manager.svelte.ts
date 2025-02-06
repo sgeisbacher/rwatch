@@ -1,6 +1,7 @@
 export interface LogEvent {
 	level: 'debug' | 'info' | 'warn' | 'error';
 	msg: string;
+	timestamp: Date;
 }
 
 export async function initConnection(
@@ -13,7 +14,7 @@ export async function initConnection(
 		iceServers
 	});
 	const log = (msg: string) => {
-		addLogEvent({ level: 'info', msg });
+		addLogEvent({ level: 'info', msg, timestamp: new Date() });
 		// document.getElementById('logs').innerHTML += msg + '<br>';
 	};
 	const writeToTerm = (msg: string) => {
