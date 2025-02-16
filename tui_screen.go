@@ -174,7 +174,10 @@ func (tm *TuiBubbleTeaModel) View() string {
 		Render(fmt.Sprintf("Run: %d (%v) ", tm.runInfo.ExecCount, tm.runInfo.ExecTime.Format(TIME_FORMAT)))
 	statusLine := lipgloss.JoinHorizontal(lipgloss.Top, sline_lstatus, sline_runs, sline_rlabel, sline_rstatus)
 
-	link := lipgloss.NewStyle().AlignHorizontal(lipgloss.Right).Render("http://165.22.91.102:8080/d43981bd-3822-4127-8cec-662f9a4d54f0/")
+	var link string
+	if tm.appState.GetWebRTCSessionId() != "" {
+		link = lipgloss.NewStyle().AlignHorizontal(lipgloss.Right).Render(tm.appState.GenSessionUrl("/"))
+	}
 	footerFiller := lipgloss.NewStyle().Width(WIDTH - w(helpLine) - w(link)).Render("")
 	footerLine := lipgloss.JoinHorizontal(lipgloss.Top, helpLine, footerFiller, link)
 

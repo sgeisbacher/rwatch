@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,10 +17,25 @@ import (
 )
 
 const debug = false
+const MAX_SESSIONID_WAIT_TIME = 45
 
 func TestSimpleCounter(t *testing.T) {
-	go run("/bin/bash", "./simple-counter.sh", "0", "5")
-	time.Sleep(2 * time.Second)
+	var sessionId string
+	go run(&sessionId, "/bin/bash", "./simple-counter.sh", "0", "5")
+
+	// wait for sessionId
+	for i := 0; i < MAX_SESSIONID_WAIT_TIME; i++ {
+		if sessionId != "" {
+			t.Logf("got session-id: %s\n", sessionId)
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	t.Logf("got session-id: %s\n", sessionId)
+	if sessionId == "" {
+		t.Fatal("could not figure out session-if")
+	}
+
 	var browser *rod.Browser
 	if debug {
 		l := launcher.New().
@@ -52,16 +68,15 @@ func TestSimpleCounter(t *testing.T) {
 		// browser = rod.New().MustConnect()
 		defer browser.MustClose()
 	}
-	page := browser.MustPage(genUrl("/"))
-	termElem, err := page.Timeout(3 * time.Minute).Element("#terminal")
+	page := browser.MustPage(genUrl(sessionId, "/"))
+	termElem, err := page.Timeout(65 * time.Second).Element("#terminal")
 	assert.Nil(t, err)
-	// assert.Equal(t, "somehtml", html)
 	assert.Equal(t, "counting: 1\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
 }
 
-func run(command ...string) {
+func run(sessionId *string, command ...string) {
 	// TODO instead of maxRunCount we could send INT/TERM signal to subprocess when done
-	cmd := exec.Command("go", append([]string{"run", ".", "--max-run-count", "40", "--plain-text-screen", "--"}, command...)...)
+	cmd := exec.Command("go", append([]string{"run", ".", "--max-run-count", "65", "--plain-text-screen", "--"}, command...)...)
 	cmd.Dir = ".."
 	reader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -75,11 +90,16 @@ func run(command ...string) {
 	}
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
-		fmt.Printf("got output line from command: %v\n", scanner.Text())
+		line := scanner.Text()
+		fmt.Printf("got output line from command: %v\n", line)
+		if strings.HasPrefix(strings.TrimSpace(line), "Session-ID:") {
+			parsedSessionId := strings.TrimSpace(strings.TrimLeft(line, "Session-ID:"))
+			*sessionId = parsedSessionId
+		}
 	}
 	cmd.Wait()
 }
 
-func genUrl(relPath string) string {
-	return fmt.Sprintf("http://165.22.91.102:8080/d43981bd-3822-4127-8cec-662f9a4d54f0%s", relPath)
+func genUrl(sessionId, relPath string) string {
+	return fmt.Sprintf("http://165.22.91.102:8080/%s%s", sessionId, relPath)
 }

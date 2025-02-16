@@ -8,7 +8,7 @@ export async function initConnection(
 	setData: (data: string[]) => void,
 	addLogEvent: (event: LogEvent) => void
 ) {
-	const resp = await fetch(genUrl('/ice-config'));
+	const resp = await fetch(genUrl('./ice-config'));
 	const iceServers = await resp.json();
 	const pc = new RTCPeerConnection({
 		iceServers
@@ -44,7 +44,7 @@ export async function initConnection(
 		if (event.candidate === null) {
 			const offerSD = btoa(JSON.stringify(pc.localDescription));
 			log('sending webrtc-offer ...');
-			await fetch(genUrl('/offer'), {
+			await fetch(genUrl('./offer'), {
 				method: 'POST',
 				body: offerSD
 			});
@@ -70,7 +70,7 @@ export async function initConnection(
 
 	const startSession = async () => {
 		log('contacting signaling server ...');
-		const resp = await fetch(genUrl('/answer'));
+		const resp = await fetch(genUrl('./answer'));
 		const answerSD = await resp.text();
 		// log("answer:", answerSD);
 
@@ -95,5 +95,5 @@ export async function initConnection(
 }
 
 function genUrl(relPath: string) {
-	return `http://165.22.91.102:8080/d43981bd-3822-4127-8cec-662f9a4d54f0${relPath}`;
+	return relPath;
 }

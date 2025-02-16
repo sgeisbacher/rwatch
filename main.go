@@ -9,9 +9,11 @@ import (
 	"github.com/sgeisbacher/rwatch/utils"
 )
 
+const SERVER_HOSTNAME = "rwatch.sgeisbacher.net:8080"
+
 var (
 	maxRunCount        = flag.Int64("max-run-count", 0, "how often the command should be run")
-	usePlainTextScreen = flag.Bool("plain-text-screen", false, "dont show command output in fancy bubbletea-screen but just simple plaintext-screen")
+	usePlainTextScreen = flag.Bool("plain-text-screen", false, "dont show command output in fancy bubbletea-decoration but just simple plaintext-screen")
 )
 
 func main() {
@@ -19,16 +21,16 @@ func main() {
 	fmt.Printf("command: %s, args: %v\n", command, args)
 
 	// Setup AppState
-	appState := createAppState()
+	appState := createAppState(SERVER_HOSTNAME)
 
 	// Setup local screen
-	var localScreen utils.Screen = &PlainTextScreen{}
+	var localScreen utils.Screen = &PlainTextScreen{appState}
 	if !*usePlainTextScreen {
 		localScreen = &TuiScreen{appState: appState}
 	}
 
 	// Setup WebRTC Screen
-	webRTCScreen := &WebRTCScreen{appState: appState}
+	webRTCScreen := createWebRTCScreen(appState)
 
 	// Setup Runner
 	runnerDone := make(chan bool, 1)
