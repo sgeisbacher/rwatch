@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -42,18 +43,21 @@ type logEvent struct {
 	msg       string
 }
 
-func createAppState() *appStateManager {
+func createAppState(signalingSrv string) *appStateManager {
 	return &appStateManager{
 		mu:           &sync.Mutex{},
 		webRTCStates: []webRTCState{WEBRTC_STATE_IDLE},
 		logs:         []logEvent{},
+		signalingSrv: signalingSrv,
 	}
 }
 
 type appStateManager struct {
-	mu           *sync.Mutex
-	webRTCStates []webRTCState
-	logs         []logEvent
+	mu              *sync.Mutex
+	webRTCStates    []webRTCState
+	logs            []logEvent
+	signalingSrv    string
+	webrtcSessionId string
 }
 
 func (appState *appStateManager) SetState(newState webRTCState) {
@@ -69,8 +73,25 @@ func (appState *appStateManager) Current() webRTCState {
 	return state
 }
 
+func (appState *appStateManager) SetWebRTCSessionId(id string) {
+	appState.Log(fmt.Sprintf("got sessionid %q", id))
+	appState.webrtcSessionId = id
+}
+
+func (appState *appStateManager) GetWebRTCSessionId() string {
+	return appState.webrtcSessionId
+}
+
 func (appState *appStateManager) Log(msg string) {
 	appState.mu.Lock()
 	appState.logs = append(appState.logs, logEvent{time.Now(), msg})
 	appState.mu.Unlock()
+}
+
+func (appState appStateManager) GenUrl(relPath string) string {
+	return fmt.Sprintf("http://%s/%s", appState.signalingSrv, relPath)
+}
+
+func (appState appStateManager) GenSessionUrl(relPath string) string {
+	return fmt.Sprintf("http://%s/%s%s", appState.signalingSrv, appState.webrtcSessionId, relPath)
 }

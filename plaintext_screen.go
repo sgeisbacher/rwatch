@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/sgeisbacher/rwatch/utils"
 )
 
-type PlainTextScreen struct{}
+type PlainTextScreen struct {
+	appState *appStateManager
+}
 
-func (s *PlainTextScreen) InitScreen() {}
+func (s *PlainTextScreen) InitScreen() {
+	go printSessionId(s.appState)
+}
 
 func (s *PlainTextScreen) Run(runnerDone chan bool) {
 	c := make(chan os.Signal, 1)
@@ -20,6 +25,7 @@ func (s *PlainTextScreen) Run(runnerDone chan bool) {
 	// 	for sig := range c {
 	// 	}
 	// }()
+
 	select {
 	case <-c:
 		fmt.Println("got TERM signal")
@@ -30,6 +36,18 @@ func (s *PlainTextScreen) Run(runnerDone chan bool) {
 
 func (s *PlainTextScreen) SetOutput(info utils.ExecutionInfo) {
 	fmt.Printf("--\nOUTPUT (run: %d):\n\n%s\n", info.ExecCount, info.Output)
+}
+
+// TODO rewrite to eventlistener
+func printSessionId(appState *appStateManager) {
+	for {
+		if appState.GetWebRTCSessionId() != "" {
+			fmt.Printf("Session-ID: %s\n", appState.GetWebRTCSessionId())
+			fmt.Printf("Session-URL: %s\n", appState.GenSessionUrl("/"))
+			break
+		}
+		time.Sleep(time.Second)
+	}
 }
 
 func (s *PlainTextScreen) SetError(err error) {}
