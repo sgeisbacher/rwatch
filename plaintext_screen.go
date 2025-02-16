@@ -42,7 +42,8 @@ func (s *PlainTextScreen) SetOutput(info utils.ExecutionInfo) {
 func printSessionId(appState *appStateManager) {
 	for {
 		if appState.GetWebRTCSessionId() != "" {
-			fmt.Printf("Session-ID:%s\n", appState.GetWebRTCSessionId())
+			fmt.Printf("Session-ID: %s\n", appState.GetWebRTCSessionId())
+			fmt.Printf("Session-URL: %s\n", appState.GenSessionUrl("/"))
 			break
 		}
 		time.Sleep(time.Second)
