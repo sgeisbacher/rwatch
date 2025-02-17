@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ type BrowserHandler struct {
 var DefaultBrowserHandler BrowserHandler = BrowserHandler{}
 
 func (bh *BrowserHandler) launchBrowserTab() (*rod.Page, error) {
+	headless := os.Getenv("CI") == "true"
 	bh.mu.Lock()
 	defer bh.mu.Unlock()
 	if bh.browser == nil {
@@ -26,7 +28,7 @@ func (bh *BrowserHandler) launchBrowserTab() (*rod.Page, error) {
 		if debug {
 			l := launcher.New().
 				Headless(false).
-				Devtools(true)
+				Devtools(headless)
 
 			// defer l.Cleanup()
 
@@ -44,7 +46,7 @@ func (bh *BrowserHandler) launchBrowserTab() (*rod.Page, error) {
 		} else {
 			l := launcher.New().
 				NoSandbox(true).
-				Headless(false)
+				Headless(headless)
 			// defer l.Cleanup()
 
 			url := l.MustLaunch()
