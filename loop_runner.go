@@ -23,7 +23,7 @@ func (r *LoopRunner) Run(screen Screen, done chan bool, commandName string, args
 			CommandStr: fmt.Sprintf("%s %v", commandName, args),
 			ExecTime:   time.Now(),
 			ExecCount:  count,
-			Output:     output,
+			Output:     string(output),
 			Success:    true,
 		}
 		if err != nil {

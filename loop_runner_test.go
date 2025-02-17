@@ -59,7 +59,7 @@ func TestLoopRunnerHappyPath(t *testing.T) {
 	setOuputMatcher := ExecutionInfoMatcher{
 		cmdStrMatcher:    gomock.Eq("ls [-l /tmp]"),
 		execCountMatcher: gomock.Eq(int64(1)),
-		outputMatcher:    gomock.Eq([]byte("-rw-r--r-- 1 stefan staff 5271 Jan  13 11:18 data.txt")),
+		outputMatcher:    gomock.Eq("-rw-r--r-- 1 stefan staff 5271 Jan  13 11:18 data.txt"),
 	}
 
 	screenMock.EXPECT().InitScreen().Times(1)

@@ -6,11 +6,11 @@ import (
 )
 
 type ExecutionInfo struct {
-	CommandStr string
-	ExecTime   time.Time
-	ExecCount  int64
-	Success    bool
-	Output     []byte
+	CommandStr string    `json:"command"`
+	ExecTime   time.Time `json:"exec_time"`
+	ExecCount  int64     `json:"exec_count"`
+	Success    bool      `json:"success"`
+	Output     string    `json:"output"`
 }
 
 func (e ExecutionInfo) String() string {

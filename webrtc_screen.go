@@ -123,7 +123,11 @@ func (sess *WebRTCSession) Init() {
 				defer ticker.Stop()
 				for range ticker.C {
 					// //log fmt.Printf("Sending '%s'\n", screen.text)
-					err = d.SendText(string(sess.latestExecution.Output))
+					data, err := json.Marshal(sess.latestExecution)
+					if err != nil {
+						log("E: while marshalling data for transport: %v", err)
+					}
+					err = d.SendText(string(data))
 					if err != nil {
 						log("E: while sending: %v", err)
 						break
