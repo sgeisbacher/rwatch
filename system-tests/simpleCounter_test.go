@@ -12,66 +12,56 @@ import (
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/stretchr/testify/assert"
 )
 
-const debug = false
 const MAX_SESSIONID_WAIT_TIME = 45
+const TIMEOUT_TERM_RESULT = 65 * time.Second
 
 func TestSimpleCounter(t *testing.T) {
+	t.Parallel()
 	var sessionId string
 	go run(&sessionId, "/bin/bash", "./simple-counter.sh", "0", "5")
 
-	// wait for sessionId
-	for i := 0; i < MAX_SESSIONID_WAIT_TIME; i++ {
-		if sessionId != "" {
-			t.Logf("got session-id: %s\n", sessionId)
-			break
-		}
-		time.Sleep(time.Second)
+	waitForSessionId(t, &sessionId)
+
+	page, err := DefaultBrowserHandler.launchBrowserTab()
+	if err != nil {
+		t.Fatalf("E: while launching browser-tab: %v\n", err)
 	}
-	t.Logf("got session-id: %s\n", sessionId)
-	if sessionId == "" {
-		t.Fatal("could not figure out session-if")
-	}
+	defer page.MustClose()
+	page.MustNavigate(genUrl(sessionId, "/"))
 
-	var browser *rod.Browser
-	if debug {
-		l := launcher.New().
-			Headless(false).
-			Devtools(true)
-
-		defer l.Cleanup()
-
-		url := l.MustLaunch()
-
-		// Trace shows verbose debug information for each action executed
-		// SlowMotion is a debug related function that waits 2 seconds between
-		// each action, making it easier to inspect what your code is doing.
-		browser = rod.New().ControlURL(url).Trace(true).SlowMotion(2 * time.Second).MustConnect()
-
-		// ServeMonitor plays screenshots of each tab. This feature is extremely
-		// useful when debugging with headless mode.
-		// You can also enable it with flag "-rod=monitor"
-		launcher.Open(browser.ServeMonitor(""))
-
-		defer browser.MustClose()
-	} else {
-		l := launcher.New().
-			NoSandbox(true).
-			Headless(true)
-		defer l.Cleanup()
-
-		url := l.MustLaunch()
-		browser = rod.New().ControlURL(url).MustConnect()
-		// browser = rod.New().MustConnect()
-		defer browser.MustClose()
-	}
-	page := browser.MustPage(genUrl(sessionId, "/"))
-	termElem, err := page.Timeout(65 * time.Second).Element("#terminal")
+	// term
+	termElem, err := page.Timeout(TIMEOUT_TERM_RESULT).Element("#terminal")
 	assert.Nil(t, err)
 	assert.Equal(t, "counting: 1\ncounting: 2\ncounting: 3\ncounting: 4\ncounting: 5\n", termElem.MustText())
+
+	// status
+	checkStatus(t, page, "SUCCESS")
+}
+
+func TestSimpleFailureHandling(t *testing.T) {
+	t.Parallel()
+	var sessionId string
+	go run(&sessionId, "/bin/bash", "./simple-failure.sh")
+
+	waitForSessionId(t, &sessionId)
+
+	page, err := DefaultBrowserHandler.launchBrowserTab()
+	if err != nil {
+		t.Fatalf("E: while launching browser-tab: %v\n", err)
+	}
+	defer page.MustClose()
+	page.MustNavigate(genUrl(sessionId, "/"))
+
+	// terminal
+	termElem, err := page.Timeout(TIMEOUT_TERM_RESULT).Element("#terminal")
+	assert.Nil(t, err)
+	assert.Equal(t, "ERR: while running script", strings.TrimSpace(termElem.MustText()))
+
+	// status
+	checkStatus(t, page, "FAILED") // TODO
 }
 
 func run(sessionId *string, command ...string) {
@@ -91,7 +81,7 @@ func run(sessionId *string, command ...string) {
 	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Printf("got output line from command: %v\n", line)
+		// fmt.Printf("got output line from command: %v\n", line)
 		if strings.HasPrefix(strings.TrimSpace(line), "Session-ID:") {
 			parsedSessionId := strings.TrimSpace(strings.TrimLeft(line, "Session-ID:"))
 			*sessionId = parsedSessionId
@@ -102,4 +92,24 @@ func run(sessionId *string, command ...string) {
 
 func genUrl(sessionId, relPath string) string {
 	return fmt.Sprintf("http://165.22.91.102:8080/%s%s", sessionId, relPath)
+}
+
+func waitForSessionId(t *testing.T, sessionId *string) {
+	for i := 0; i < MAX_SESSIONID_WAIT_TIME; i++ {
+		if *sessionId != "" {
+			t.Logf("got session-id: %s\n", *sessionId)
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	t.Logf("got session-id: %s\n", *sessionId)
+	if *sessionId == "" {
+		t.Fatal("could not figure out session-if")
+	}
+}
+
+func checkStatus(t *testing.T, page *rod.Page, expectedStatus string) {
+	statusElem, err := page.Timeout(2 * time.Second).Element("#status")
+	assert.Nil(t, err)
+	assert.Equal(t, expectedStatus, statusElem.MustText())
 }

@@ -1,3 +1,5 @@
+import type { ExecutionInfo } from '$lib/utils/types';
+
 export interface LogEvent {
 	level: 'debug' | 'info' | 'warn' | 'error';
 	msg: string;
@@ -5,7 +7,7 @@ export interface LogEvent {
 }
 
 export async function initConnection(
-	setData: (data: string[]) => void,
+	setExecInfo: (info: ExecutionInfo) => void,
 	addLogEvent: (event: LogEvent) => void
 ) {
 	const resp = await fetch(genUrl('./ice-config'));
@@ -18,7 +20,8 @@ export async function initConnection(
 		// document.getElementById('logs').innerHTML += msg + '<br>';
 	};
 	const writeToTerm = (msg: string) => {
-		setData([msg]);
+		const execInfo = JSON.parse(msg);
+		setExecInfo(execInfo);
 		// TODO
 		// let termElem = document.getElementById('terminal');
 		// if (!termElem) {

@@ -1,14 +1,16 @@
 <script lang="ts">
+	import type { ExecutionInfo } from '$lib/utils/types';
+
 	interface Props {
-		data: string[];
+		execution: ExecutionInfo;
 	}
-	const { data }: Props = $props();
+	const { execution }: Props = $props();
 </script>
 
 <div>
 	<div id="terminalContainer">
-		{#if data.length > 0}
-			<pre id="terminal">{#each data as line}{line}{/each}</pre>
+		{#if execution}
+			<pre id="terminal">{execution.output}</pre>
 		{/if}
 		<br />
 	</div>
